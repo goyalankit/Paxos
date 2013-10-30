@@ -2,10 +2,15 @@ package com.ut.paxos;
 
 import java.io.Serializable;
 
-public abstract class Message implements Serializable
-{
+public abstract class Message implements Serializable{
+
     protected NodeData source;
     protected NodeData destination;
+
+    protected Message(NodeData source, NodeData destination) {
+        this.source = source;
+        this.destination = destination;
+    }
 
     public NodeData getSource() {
         return source;
