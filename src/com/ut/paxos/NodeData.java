@@ -7,6 +7,15 @@ public class NodeData implements Serializable{
     private String hostName;
     private int port;
     private int nodeId;
+    private boolean isLeader;
+
+    public boolean isLeader() {
+        return isLeader;
+    }
+
+    public void setLeader(boolean leader) {
+        isLeader = leader;
+    }
 
     public NodeData(String hostName, int port, int nodeId) {
         this.hostName = hostName;

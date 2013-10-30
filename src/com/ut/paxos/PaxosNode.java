@@ -12,12 +12,29 @@ import java.util.Set;
 
 public class PaxosNode {
 
+    public NodeData getNodeData() {
+        return nodeData;
+    }
 
-
-    //Local PaxosNode Variables
+    /*
+    *
+    * Node Variables. Information about itself and other nodes in the system
+    *
+    * */
     private NodeData nodeData;
     private Set<NodeData> nodes;
+    private boolean isLeader;
 
+    private int currentSlotNumber;
+    private int currentBallotNumber;
+
+
+
+    public PaxosNode(String hostName, int port, int nodeId){
+        this.nodeData = new NodeData(hostName, port, nodeId);
+        this.currentBallotNumber = 0;
+        this.currentSlotNumber = 0;
+    }
 
     private class MessageListener extends Thread{
         private ServerSocket serverSocket;
@@ -29,31 +46,45 @@ public class PaxosNode {
             }
         }
 
-
-
-        public void run(){
+        public void run() {
             Socket socket;
             ObjectInputStream oIn;
-            try {
-                System.out.println("Starting node "+nodeData.getNodeId());
-                socket = serverSocket.accept();
-                oIn = new ObjectInputStream(socket.getInputStream());
-                Message message = (Message) oIn.readObject();
-                if(message instanceof P1aMessage){
-                    P1aMessage p1aMessage = (P1aMessage) message;
-                    System.out.println(nodeData.getNodeId()+ ": Data received from "+p1aMessage.getSource().getNodeId());
+            while (true) {
+                try {
+                    socket = serverSocket.accept();
+                    oIn = new ObjectInputStream(socket.getInputStream());
+                    Message message = (Message) oIn.readObject();
+                    if (message instanceof P1aMessage) {
+                        P1aMessage p1aMessage = (P1aMessage) message;
+                        System.out.println(nodeData.getNodeId() + ": Data received from " + p1aMessage.getSource().getNodeId());
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    writeToConsole("IOException while trying read the socket!");
+                } catch (ClassNotFoundException e) {
+                    writeToConsole("Class not found while reading input stream!");
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                writeToConsole("IOException while trying read the socket!");
-            } catch (ClassNotFoundException e) {
-                writeToConsole("Class not found while reading input stream!");
             }
         }
     }
 
-    //make this private
-    public void unicast(NodeData node, Message m)
+    private void sendMessageToAll(Message m){
+        for(NodeData node: nodes){
+            m.setDestination(node);
+            if(node.getNodeId() == nodeData.getNodeId())
+                deliver(m);
+            else
+                sendMessageToANode(node, m);
+        }
+
+    }
+
+    private void deliver(Message m){
+        System.out.println("Message received!");
+
+    }
+
+    private void sendMessageToANode(NodeData node, Message m)
     {
         Socket socket = null;
         ObjectOutputStream out = null;
@@ -99,6 +130,16 @@ public class PaxosNode {
         messageListener.start();
     }
 
+    public void propose(AccountAction accountAction){
+        propose(accountAction, currentSlotNumber++);
+    }
+
+    public void propose(AccountAction accountAction, int slotNumber){
+        Proposal p = new Proposal(slotNumber, currentBallotNumber, accountAction);
+        Message m = new P1aMessage(nodeData, null, currentBallotNumber);
+        sendMessageToAll(m);
+    }
+
     public Set<NodeData> getNodes() {
         return nodes;
     }
@@ -111,9 +152,7 @@ public class PaxosNode {
         this.nodeData = nodeData;
     }
 
-    public void writeToConsole(String message){
+    public synchronized void writeToConsole(String message){
         System.err.println(message);
     }
-
-
 }
